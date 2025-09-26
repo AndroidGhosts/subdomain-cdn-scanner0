@@ -1,76 +1,15 @@
-name: Build Web Application
-
-on:
-  push:
-    branches: [ main ]
-
+name: Simple Build
+on: push
 jobs:
   build:
     runs-on: ubuntu-22.04
-    
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Create web-based scanner
-      run: |
-        cat > web_scanner.py << 'EOF'
-from flask import Flask, request, jsonify
-import socket
-import threading
-
-app = Flask(__name__)
-
-def scan_domain(domain):
-    results = []
-    try:
-        ip = socket.gethostbyname(domain)
-        results.append(f"{domain} -> {ip}")
-    except:
-        results.append(f"{domain} -> Not found")
-    return results
-
-@app.route('/')
-def home():
-    return '''
-    <html>
-    <body>
-        <h1>Subdomain Scanner</h1>
-        <input type="text" id="domain" placeholder="Enter domain">
-        <button onclick="scan()">Scan</button>
-        <div id="results"></div>
-        <script>
-        function scan() {
-            var domain = document.getElementById('domain').value;
-            fetch('/scan?domain=' + domain)
-                .then(r => r.json())
-                .then(data => {
-                    document.getElementById('results').innerHTML = data.results.join('<br>');
-                });
-        }
-        </script>
-    </body>
-    </html>
-    '''
-
-@app.route('/scan')
-def scan():
-    domain = request.args.get('domain', '')
-    if domain:
-        results = scan_domain(domain)
-        return jsonify({"results": results})
-    return jsonify({"results": ["No domain provided"]})
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
-EOF
-        
-        echo "flask" > requirements.txt
-        
-    - name: Create deployment package
-      run: |
-        zip -r web_scanner.zip web_scanner.py requirements.txt
-        
-    - uses: actions/upload-artifact@v4
-      with:
-        name: web-scanner
-        path: web_scanner.zip
+      - uses: actions/checkout@v4
+      - name: Create package
+        run: |
+          echo "print('Ready')" > main.py
+          zip app.zip main.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app
+          path: app.zip
