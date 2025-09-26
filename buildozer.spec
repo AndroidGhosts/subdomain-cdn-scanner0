@@ -11,3 +11,15 @@ orientation = portrait
 [buildozer]
 log_level = 2
 warn_on_root = 1
+
+# إعدادات Android المحددة
+[app:android]
+api = 33
+minapi = 21
+ndk = 25b
+android.allow_backup = True
+android.accept_sdk_license = True
+
+# إعدادات Python
+[python]
+android.python = 3.9
