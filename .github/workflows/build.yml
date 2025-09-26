@@ -50,136 +50,131 @@ jobs:
     - name: Create proper main.py for Android
       run: |
         cat > main.py << 'EOF'
-        # -*- coding: utf-8 -*-
-        from kivy.app import App
-        from kivy.uix.boxlayout import BoxLayout
-        from kivy.uix.label import Label
-        from kivy.uix.textinput import TextInput
-        from kivy.uix.button import Button
-        from kivy.uix.scrollview import ScrollView
-        import socket
-        import requests
-        from concurrent.futures import ThreadPoolExecutor
-        import dns.resolver
-        
-        class ScannerApp(App):
-            def build(self):
-                self.title = "Subdomain Scanner"
-                
-                # Main layout
-                main_layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
-                
-                # Input section
-                input_layout = BoxLayout(orientation='vertical', size_hint=(1, 0.2))
-                input_layout.add_widget(Label(text='Enter Domain:', size_hint=(1, 0.5)))
-                self.domain_input = TextInput(
-                    hint_text='example.com',
-                    multiline=False,
-                    size_hint=(1, 0.5)
-                )
-                input_layout.add_widget(self.domain_input)
-                main_layout.add_widget(input_layout)
-                
-                # Button section
-                self.scan_button = Button(
-                    text='START SCAN',
-                    size_hint=(1, 0.1),
-                    background_color=(0, 0.5, 1, 1)
-                )
-                self.scan_button.bind(on_press=self.start_scan)
-                main_layout.add_widget(self.scan_button)
-                
-                # Results section
-                results_layout = BoxLayout(orientation='vertical', size_hint=(1, 0.7))
-                results_layout.add_widget(Label(text='Scan Results:', size_hint=(1, 0.1)))
-                
-                self.results_label = Label(
-                    text='No scan results yet...',
-                    text_size=(None, None),
-                    size_hint_y=None,
-                    halign='left',
-                    valign='top'
-                )
-                self.results_label.bind(size=self.results_label.setter('text_size'))
-                
-                scrollview = ScrollView(size_hint=(1, 0.9))
-                scrollview.add_widget(self.results_label)
-                results_layout.add_widget(scrollview)
-                main_layout.add_widget(results_layout)
-                
-                return main_layout
-            
-            def start_scan(self, instance):
-                domain = self.domain_input.text.strip()
-                if not domain:
-                    self.results_label.text = "Please enter a domain"
-                    return
-                
-                self.scan_button.text = "SCANNING..."
-                self.scan_button.background_color = (1, 0.5, 0, 1)
-                self.results_label.text = f"Scanning {domain}...\n\n"
-                
-                # Simple scanning function
-                try:
-                    results = self.scan_domain(domain)
-                    self.results_label.text = f"Results for {domain}:\n\n{results}"
-                except Exception as e:
-                    self.results_label.text = f"Error: {str(e)}"
-                
-                self.scan_button.text = "SCAN AGAIN"
-                self.scan_button.background_color = (0, 0.5, 1, 1)
-            
-            def scan_domain(self, domain):
-                results = []
-                
-                # Check main domain
-                try:
-                    ip = socket.gethostbyname(domain)
-                    results.append(f"✓ {domain} -> {ip}")
-                except:
-                    results.append(f"✗ {domain} -> Not reachable")
-                
-                # Check common subdomains
-                subdomains = ['www', 'mail', 'ftp', 'admin', 'api', 'blog']
-                
-                for sub in subdomains:
-                    full_domain = f"{sub}.{domain}"
-                    try:
-                        ip = socket.gethostbyname(full_domain)
-                        results.append(f"✓ {full_domain} -> {ip}")
-                    except:
-                        pass
-                
-                return "\n".join(results)
-        
-        if __name__ == '__main__':
-            ScannerApp().run()
-        EOF
-        
-    - name: Create buildozer.spec
-      run: |
-        buildozer init
-        # Update buildozer.spec with correct settings
-        cat > buildozer.spec << 'EOF'
-[app]
-title = Subdomain Scanner
-package.name = subdomainscanner
-package.domain = org.ghost.scanner
-source.dir = .
-source.include_exts = py,png,jpg,kv,atlas,txt
-version = 1.0
-requirements = python3,kivy,requests,dnspython,colorama,urllib3
-orientation = portrait
+# -*- coding: utf-8 -*-
+from kivy.app import App
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.label import Label
+from kivy.uix.textinput import TextInput
+from kivy.uix.button import Button
+from kivy.uix.scrollview import ScrollView
+import socket
 
-[buildozer]
-log_level = 2
+class ScannerApp(App):
+    def build(self):
+        self.title = "Subdomain Scanner"
+        
+        # Main layout
+        main_layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        
+        # Input section
+        input_layout = BoxLayout(orientation='vertical', size_hint=(1, 0.2))
+        input_layout.add_widget(Label(text='Enter Domain:', size_hint=(1, 0.5)))
+        self.domain_input = TextInput(
+            hint_text='example.com',
+            multiline=False,
+            size_hint=(1, 0.5)
+        )
+        input_layout.add_widget(self.domain_input)
+        main_layout.add_widget(input_layout)
+        
+        # Button section
+        self.scan_button = Button(
+            text='START SCAN',
+            size_hint=(1, 0.1),
+            background_color=(0, 0.5, 1, 1)
+        )
+        self.scan_button.bind(on_press=self.start_scan)
+        main_layout.add_widget(self.scan_button)
+        
+        # Results section
+        results_layout = BoxLayout(orientation='vertical', size_hint=(1, 0.7))
+        results_layout.add_widget(Label(text='Scan Results:', size_hint=(1, 0.1)))
+        
+        self.results_label = Label(
+            text='No scan results yet...',
+            text_size=(None, None),
+            size_hint_y=None,
+            halign='left',
+            valign='top'
+        )
+        self.results_label.bind(size=self.results_label.setter('text_size'))
+        
+        scrollview = ScrollView(size_hint=(1, 0.9))
+        scrollview.add_widget(self.results_label)
+        results_layout.add_widget(scrollview)
+        main_layout.add_widget(results_layout)
+        
+        return main_layout
+    
+    def start_scan(self, instance):
+        domain = self.domain_input.text.strip()
+        if not domain:
+            self.results_label.text = "Please enter a domain"
+            return
+        
+        self.scan_button.text = "SCANNING..."
+        self.scan_button.background_color = (1, 0.5, 0, 1)
+        self.results_label.text = f"Scanning {domain}...\n\n"
+        
+        # Simple scanning function
+        try:
+            results = self.scan_domain(domain)
+            self.results_label.text = f"Results for {domain}:\n\n{results}"
+        except Exception as e:
+            self.results_label.text = f"Error: {str(e)}"
+        
+        self.scan_button.text = "SCAN AGAIN"
+        self.scan_button.background_color = (0, 0.5, 1, 1)
+    
+    def scan_domain(self, domain):
+        results = []
+        
+        # Check main domain
+        try:
+            ip = socket.gethostbyname(domain)
+            results.append(f"✓ {domain} -> {ip}")
+        except:
+            results.append(f"✗ {domain} -> Not reachable")
+        
+        # Check common subdomains
+        subdomains = ['www', 'mail', 'ftp', 'admin', 'api', 'blog']
+        
+        for sub in subdomains:
+            full_domain = f"{sub}.{domain}"
+            try:
+                ip = socket.gethostbyname(full_domain)
+                results.append(f"✓ {full_domain} -> {ip}")
+            except:
+                pass
+        
+        return "\n".join(results)
 
-[app:android]
-api = 33
-minapi = 21
-android.allow_backup = True
-android.accept_sdk_license = True
+if __name__ == '__main__':
+    ScannerApp().run()
 EOF
+        
+    - name: Create buildozer.spec using echo commands
+      run: |
+        buildozer init || true
+        # Create buildozer.spec using multiple echo commands
+        echo '[app]' > buildozer.spec
+        echo 'title = Subdomain Scanner' >> buildozer.spec
+        echo 'package.name = subdomainscanner' >> buildozer.spec
+        echo 'package.domain = org.ghost.scanner' >> buildozer.spec
+        echo 'source.dir = .' >> buildozer.spec
+        echo 'source.include_exts = py,png,jpg,kv,atlas,txt' >> buildozer.spec
+        echo 'version = 1.0' >> buildozer.spec
+        echo 'requirements = python3,kivy,requests,dnspython,colorama,urllib3' >> buildozer.spec
+        echo 'orientation = portrait' >> buildozer.spec
+        echo '' >> buildozer.spec
+        echo '[buildozer]' >> buildozer.spec
+        echo 'log_level = 2' >> buildozer.spec
+        echo '' >> buildozer.spec
+        echo '[app:android]' >> buildozer.spec
+        echo 'api = 33' >> buildozer.spec
+        echo 'minapi = 21' >> buildozer.spec
+        echo 'android.allow_backup = True' >> buildozer.spec
+        echo 'android.accept_sdk_license = True' >> buildozer.spec
         
     - name: Build the APK
       run: |
