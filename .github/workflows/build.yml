@@ -1,4 +1,4 @@
-name: Simple APK Builder
+name: Docker APK Build
 
 on:
   push:
@@ -11,26 +11,12 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     
-    - name: Set up Python
-      uses: actions/setup-python@v3
-      with:
-        python-version: '3.9'
-    
-    - name: Install dependencies
+    - name: Build with Docker
       run: |
-        pip install requests dnspython colorama urllib3
-        
-    - name: Test script
-      run: |
-        python main.py --help || echo "Script tested"
-        
-    - name: Create APK placeholder
-      run: |
-        echo "This is a placeholder APK file." > app-placeholder.txt
-        echo "Build successful but APK creation needs additional setup." >> app-placeholder.txt
-        zip subdomain-scanner.apk app-placeholder.txt
+        docker build -t apk-builder .
+        docker run -v $(pwd)/output:/app/bin apk-builder
         
     - uses: actions/upload-artifact@v3
       with:
-        name: subdomain-scanner
-        path: subdomain-scanner.apk
+        name: apk-output
+        path: output/*.apk
