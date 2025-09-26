@@ -1,106 +1,49 @@
-name: Build Flutter App
+name: Build Web App
 on: push
 jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.16.0'
-      - name: Create Flutter app
+      - name: Create web application
         run: |
-          flutter create subdomain_scanner
-          cd subdomain_scanner
-          
-          cat > lib/main.dart << 'EOF'
-import 'package:flutter/material.dart';
-
-void main() => runApp(SubdomainScannerApp());
-
-class SubdomainScannerApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Subdomain Scanner',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: ScannerScreen(),
-    );
-  }
-}
-
-class ScannerScreen extends StatefulWidget {
-  @override
-  _ScannerScreenState createState() => _ScannerScreenState();
-}
-
-class _ScannerScreenState extends State<ScannerScreen> {
-  final TextEditingController _domainController = TextEditingController();
-  List<String> _results = [];
-
-  void _scanDomain() {
-    final domain = _domainController.text.trim();
-    if (domain.isEmpty) {
-      setState(() {
-        _results = ['Please enter a domain'];
-      });
-      return;
+          cat > index.html << 'EOF'
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Subdomain Scanner</title>
+    <style>
+        body { font-family: Arial; max-width: 800px; margin: 0 auto; padding: 20px; }
+        input, button { padding: 10px; margin: 5px; width: 100%; }
+        #results { margin-top: 20px; }
+        .result { padding: 10px; border: 1px solid #ddd; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Subdomain Scanner</h1>
+    <input type="text" id="domain" placeholder="Enter domain (e.g. google.com)">
+    <button onclick="scan()">Scan Subdomains</button>
+    <div id="results"></div>
+    
+    <script>
+    function scan() {
+        const domain = document.getElementById('domain').value;
+        const results = document.getElementById('results');
+        results.innerHTML = `
+            <div class="result">Scanning ${domain}...</div>
+            <div class="result">www.${domain} → Checking...</div>
+            <div class="result">mail.${domain} → Checking...</div>
+            <div class="result">ftp.${domain} → Checking...</div>
+            <div class="result">admin.${domain} → Checking...</div>
+        `;
     }
-
-    setState(() {
-      _results = [
-        'Scanning $domain...',
-        'www.$domain → Checking...',
-        'mail.$domain → Checking...',
-        'ftp.$domain → Checking...',
-        'admin.$domain → Checking...'
-      ];
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Subdomain Scanner')),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: _domainController,
-              decoration: InputDecoration(
-                labelText: 'Enter domain',
-                hintText: 'example.com',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _scanDomain,
-              child: Text('Start Scan'),
-            ),
-            SizedBox(height: 20),
-            Expanded(
-              child: ListView.builder(
-                itemCount: _results.length,
-                itemBuilder: (context, index) => Card(
-                  child: ListTile(title: Text(_results[index])),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+    </script>
+</body>
+</html>
 EOF
-      - name: Build APK
-        run: |
-          cd subdomain_scanner
-          flutter build apk --release
+      - name: Package web app
+        run: zip webapp.zip index.html
       - uses: actions/upload-artifact@v4
         with:
-          name: flutter-apk
-          path: subdomain_scanner/build/app/outputs/flutter-apk/
+          name: web-app
+          path: webapp.zip
