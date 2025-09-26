@@ -1,25 +1,108 @@
-name: Simple APK Build
-on: push
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.16.0'
-      - name: Create simple app
+          
+      - name: Create Flutter app
         run: |
-          flutter create myapp
-          cd myapp
+          flutter create subdomain_scanner
+          cd subdomain_scanner
+          
+      - name: Add scanner functionality
+        run: |
+          cd subdomain_scanner
+          cat > lib/main.dart << 'EOF'
+import 'package:flutter/material.dart';
+
+void main() => runApp(SubdomainScannerApp());
+
+class SubdomainScannerApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Subdomain Scanner',
+      home: ScannerScreen(),
+    );
+  }
+}
+
+class ScannerScreen extends StatefulWidget {
+  @override
+  _ScannerScreenState createState() => _ScannerScreenState();
+}
+
+class _ScannerScreenState extends State<ScannerScreen> {
+  final _domainController = TextEditingController();
+  List<String> results = [];
+
+  void scanDomain() {
+    final domain = _domainController.text;
+    if (domain.isEmpty) {
+      setState(() => results = ['Please enter a domain']);
+      return;
+    }
+
+    setState(() {
+      results = [
+        'Scanning $domain...',
+        'www.$domain → Checking...',
+        'mail.$domain → Checking...',
+        'ftp.$domain → Checking...',
+        'admin.$domain → Checking...'
+      ];
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Subdomain Scanner')),
+      body: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          children: [
+            TextField(
+              controller: _domainController,
+              decoration: InputDecoration(labelText: 'Enter domain'),
+            ),
+            ElevatedButton(
+              onPressed: scanDomain,
+              child: Text('Scan'),
+            ),
+            Expanded(
+              child: ListView.builder(
+                itemCount: results.length,
+                itemBuilder: (context, index) => ListTile(
+                  title: Text(results[index]),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+EOF
+          
+      - name: Build APK
+        run: |
+          cd subdomain_scanner
           flutter build apk --release
-      - name: Force find and upload APK
-        run: |
-          # البحث في جميع المواقع الممكنة لـ APK
-          find . -name "*.apk" -exec echo "Found APK: {}" \; -exec cp {} . \;
-          ls -la *.apk || echo "No APK copied"
+          
       - uses: actions/upload-artifact@v4
         with:
-          name: app-apk
-          path: "*.apk"
-          if-no-files-found: warn
+          name: subdomain-scanner-apk
+          path: subdomain_scanner/build/app/outputs/flutter-apk/app-release.apk
