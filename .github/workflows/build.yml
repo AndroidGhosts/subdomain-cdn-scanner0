@@ -1,7 +1,9 @@
-name: Docker APK Build
+name: Build Android APK
 
 on:
   push:
+    branches: [ main ]
+  pull_request:
     branches: [ main ]
 
 jobs:
@@ -9,14 +11,46 @@ jobs:
     runs-on: ubuntu-22.04
     
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v4
     
-    - name: Build with Docker
-      run: |
-        docker build -t apk-builder .
-        docker run -v $(pwd)/output:/app/bin apk-builder
-        
-    - uses: actions/upload-artifact@v3
+    - name: Set up Python
+      uses: actions/setup-python@v4
       with:
-        name: apk-output
-        path: output/*.apk
+        python-version: '3.10'
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          git zip unzip \
+          openjdk-11-jdk \
+          python3-pip \
+          autoconf libtool pkg-config \
+          zlib1g-dev \
+          libncurses5-dev \
+          cmake \
+          libffi-dev libssl-dev \
+          swig \
+          cython \
+          python3-venv
+        
+    - name: Install Buildozer
+      run: |
+        python3 -m pip install --upgrade pip
+        pip3 install buildozer cython==0.29.33
+        
+    - name: Initialize Buildozer
+      run: |
+        buildozer init || true
+        
+    - name: Build APK
+      run: |
+        buildozer -v android debug
+      
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: subdomain-scanner-apk
+        path: bin/*.apk
+        retention-days: 7
