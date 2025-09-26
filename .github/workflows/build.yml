@@ -1,4 +1,4 @@
-name: Quick APK Build
+name: Build Web Application
 
 on:
   push:
@@ -11,30 +11,66 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Clean and setup
+    - name: Create web-based scanner
       run: |
-        # Force clean start
-        rm -f buildozer.spec
-        rm -rf .buildozer/ bin/ 2>/dev/null || true
+        cat > web_scanner.py << 'EOF'
+from flask import Flask, request, jsonify
+import socket
+import threading
+
+app = Flask(__name__)
+
+def scan_domain(domain):
+    results = []
+    try:
+        ip = socket.gethostbyname(domain)
+        results.append(f"{domain} -> {ip}")
+    except:
+        results.append(f"{domain} -> Not found")
+    return results
+
+@app.route('/')
+def home():
+    return '''
+    <html>
+    <body>
+        <h1>Subdomain Scanner</h1>
+        <input type="text" id="domain" placeholder="Enter domain">
+        <button onclick="scan()">Scan</button>
+        <div id="results"></div>
+        <script>
+        function scan() {
+            var domain = document.getElementById('domain').value;
+            fetch('/scan?domain=' + domain)
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('results').innerHTML = data.results.join('<br>');
+                });
+        }
+        </script>
+    </body>
+    </html>
+    '''
+
+@app.route('/scan')
+def scan():
+    domain = request.args.get('domain', '')
+    if domain:
+        results = scan_domain(domain)
+        return jsonify({"results": results})
+    return jsonify({"results": ["No domain provided"]})
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
+EOF
         
-        # Install tools
-        sudo apt update && sudo apt install -y python3-pip openjdk-11-jdk
-        pip3 install Cython buildozer
+        echo "flask" > requirements.txt
         
-    - name: Setup licenses
+    - name: Create deployment package
       run: |
-        mkdir -p ~/.android/licenses
-        echo "8933bad161af4178b1185d1a37fbf41ea5269c55" > ~/.android/licenses/android-sdk-license
-        
-    - name: Create app
-      run: |
-        echo "print('Android Scanner Ready')" > main.py
-        yes | buildozer init 2>/dev/null || true
-        
-    - name: Build
-      run: buildozer android debug
+        zip -r web_scanner.zip web_scanner.py requirements.txt
         
     - uses: actions/upload-artifact@v4
       with:
-        name: final-apk
-        path: bin/
+        name: web-scanner
+        path: web_scanner.zip
