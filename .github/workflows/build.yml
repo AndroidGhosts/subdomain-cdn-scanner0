@@ -1,73 +1,22 @@
-name: Build APK
-
-on:
-  push:
-    branches: [ main ]
-
+name: Simple APK
+on: push
 jobs:
   build:
     runs-on: ubuntu-22.04
-    
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup environment
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y python3-pip openjdk-17-jdk zlib1g-dev
-        
-    - name: Install Buildozer
-      run: pip3 install buildozer
-        
-    - name: Clean existing files and reinitialize
-      run: |
-        # Remove existing buildozer files if they exist
-        rm -f buildozer.spec
-        rm -rf .buildozer/
-        
-        # Create simple main.py
-        echo "print('Subdomain Scanner Starting...')" > main.py
-        
-        # Initialize fresh
-        buildozer init || echo "Initialization completed"
-        
-    - name: Update buildozer.spec with correct requirements
-      run: |
-        # Create or update buildozer.spec
-        cat > buildozer.spec << 'EOF'
-[app]
-title = Subdomain Scanner
-package.name = subdomainscanner
-package.domain = org.ghost.scanner
-source.dir = .
-source.include_exts = py,png,jpg,kv,atlas,txt
-version = 1.0
-requirements = python3
-orientation = portrait
-
-[buildozer]
-log_level = 2
-
-[app:android]
-api = 33
-minapi = 21
-android.allow_backup = true
-EOF
-        
-    - name: Accept Android licenses
-      run: |
-        mkdir -p ~/.android/licenses
-        echo "8933bad161af4178b1185d1a37fbf41ea5269c55" > ~/.android/licenses/android-sdk-license
-        echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> ~/.android/licenses/android-sdk-license
-        
-    - name: Build APK
-      run: |
-        buildozer android clean
-        buildozer -v android debug
-        
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: subdomain-scanner-apk
-        path: bin/*.apk
-        retention-days: 7
+      - uses: actions/checkout@v4
+      - name: Clean and setup
+        run: |
+          rm -f buildozer.spec
+          rm -rf .buildozer/
+          pip3 install buildozer
+      - name: Create files
+        run: |
+          echo "print('Hello Android')" > main.py
+          buildozer init
+      - name: Build
+        run: buildozer android debug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk-file
+          path: bin/
