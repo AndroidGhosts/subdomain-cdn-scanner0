@@ -1,75 +1,26 @@
-name: APK Build with Working SDK
-
-on:
-  push:
-    branches: [ main ]
-
+name: Build APK
+on: push
 jobs:
   build:
     runs-on: ubuntu-22.04
-    
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup environment
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y python3-pip openjdk-11-jdk zlib1g-dev git wget
-        
-    - name: Install build tools
-      run: |
-        pip3 install Cython buildozer
-        
-    - name: Pre-configure Android environment
-      run: |
-        mkdir -p ~/.android/licenses
-        # Comprehensive license acceptance
-        cat > ~/.android/licenses/android-sdk-license << 'LICENSE'
-8933bad161af4178b1185d1a37fbf41ea5269c55
-d56f5187479451eabf01fb78af6dfcb131a6481e
-84831b9409646a918e30573bab4c9c91346d8abd
-601085b94cd77f0b54ff86406957099ebe79c4d6
-LICENSE
-        
-    - name: Create application
-      run: |
-        echo "print('Android Subdomain Scanner')" > main.py
-        
-        # Create buildozer.spec that uses available SDK versions
-        cat > buildozer.spec << 'EOF'
-[app]
-title = Subdomain Scanner
-package.name = subdomainscanner
-package.domain = org.test.scanner
-source.dir = .
-source.include_exts = py,png,jpg,kv,atlas,txt
-version = 1.0
-requirements = python3
-orientation = portrait
-
-[buildozer]
-log_level = 1
-
-[app:android]
-api = 31
-minapi = 21
-android.sdk_path = /home/runner/.buildozer/android/platform/android-sdk
-EOF
-        
-    - name: Build with error handling
-      run: |
-        buildozer android clean
-        buildozer android update sdk --yes || true
-        buildozer -v android debug || echo "Build attempted"
-        
-    - name: Package results
-      run: |
-        mkdir -p output
-        cp main.py output/
-        [ -f bin/*.apk ] && cp bin/*.apk output/ || echo "No APK found"
-        zip -r results.zip output/
-        
-    - uses: actions/upload-artifact@v4
-      with:
-        name: build-results
-        path: results.zip
+      - uses: actions/checkout@v4
+      - name: Setup
+        run: |
+          sudo apt update
+          sudo apt install -y python3-pip openjdk-11-jdk
+          pip3 install Cython buildozer
+      - name: Accept licenses
+        run: |
+          mkdir -p ~/.android/licenses
+          echo "8933bad161af4178b1185d1a37fbf41ea5269c55" > ~/.android/licenses/android-sdk-license
+      - name: Create files
+        run: |
+          echo "print('TEST')" > main.py
+          buildozer init
+      - name: Build
+        run: buildozer android debug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app
+          path: bin/
