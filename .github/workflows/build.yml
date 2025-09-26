@@ -1,33 +1,106 @@
-name: Build APK
+name: Build Flutter App
 on: push
 jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python 3.8
-        uses: actions/setup-python@v4
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
-          python-version: '3.8'
-      - name: Install with older NDK
+          flutter-version: '3.16.0'
+      - name: Create Flutter app
         run: |
-          sudo apt update
-          sudo apt install -y openjdk-11-jdk
-          pip3 install python-for-android
+          flutter create subdomain_scanner
+          cd subdomain_scanner
           
-          # Set older NDK version
-          export ANDROID_NDK_HOME=/usr/local/lib/android/sdk/ndk/21.4.7075529
-      - name: Build with specific NDK
+          cat > lib/main.dart << 'EOF'
+import 'package:flutter/material.dart';
+
+void main() => runApp(SubdomainScannerApp());
+
+class SubdomainScannerApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Subdomain Scanner',
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: ScannerScreen(),
+    );
+  }
+}
+
+class ScannerScreen extends StatefulWidget {
+  @override
+  _ScannerScreenState createState() => _ScannerScreenState();
+}
+
+class _ScannerScreenState extends State<ScannerScreen> {
+  final TextEditingController _domainController = TextEditingController();
+  List<String> _results = [];
+
+  void _scanDomain() {
+    final domain = _domainController.text.trim();
+    if (domain.isEmpty) {
+      setState(() {
+        _results = ['Please enter a domain'];
+      });
+      return;
+    }
+
+    setState(() {
+      _results = [
+        'Scanning $domain...',
+        'www.$domain → Checking...',
+        'mail.$domain → Checking...',
+        'ftp.$domain → Checking...',
+        'admin.$domain → Checking...'
+      ];
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Subdomain Scanner')),
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            TextField(
+              controller: _domainController,
+              decoration: InputDecoration(
+                labelText: 'Enter domain',
+                hintText: 'example.com',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _scanDomain,
+              child: Text('Start Scan'),
+            ),
+            SizedBox(height: 20),
+            Expanded(
+              child: ListView.builder(
+                itemCount: _results.length,
+                itemBuilder: (context, index) => Card(
+                  child: ListTile(title: Text(_results[index])),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+EOF
+      - name: Build APK
         run: |
-          p4a apk \
-          --private . \
-          --package=org.test.app \
-          --name App \
-          --requirements=python3 \
-          --arch=arm64-v8a \
-          --bootstrap=webview \
-          --ndk-version=21
+          cd subdomain_scanner
+          flutter build apk --release
       - uses: actions/upload-artifact@v4
         with:
-          name: apk
-          path: "*.apk"
+          name: flutter-apk
+          path: subdomain_scanner/build/app/outputs/flutter-apk/
