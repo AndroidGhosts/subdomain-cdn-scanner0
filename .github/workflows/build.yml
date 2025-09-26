@@ -1,33 +1,19 @@
-name: Build APK with P4A
-
-on:
-  push:
-    branches: [ main ]
-
+name: Build APK
+on: push
 jobs:
   build:
     runs-on: ubuntu-22.04
-    
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Install Python-for-Android
-      run: |
-        sudo apt update
-        sudo apt install -y python3-pip openjdk-11-jdk zlib1g-dev
-        pip3 install python-for-android
-        
-    - name: Create Python script
-      run: |
-        cat > main.py << 'EOF'
-print("Subdomain Scanner Android App")
-EOF
-        
-    - name: Build APK
-      run: |
-        p4a apk --private . --package=org.ghost.scanner --name "SubdomainScanner" --version 1.0 --requirements=python3
-        
-    - uses: actions/upload-artifact@v4
-      with:
-        name: android-apk
-        path: *.apk
+      - uses: actions/checkout@v4
+      - name: Install
+        run: |
+          sudo apt update
+          pip3 install python-for-android
+      - name: Create files
+        run: |
+          echo "print('Ready')" > main.py
+      - name: Build
+        run: p4a apk --private . --package=org.test.app --name App --requirements=python3
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk-file
