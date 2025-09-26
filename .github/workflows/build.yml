@@ -1,26 +1,40 @@
-name: Build APK
-on: push
+name: Quick APK Build
+
+on:
+  push:
+    branches: [ main ]
+
 jobs:
   build:
     runs-on: ubuntu-22.04
+    
     steps:
-      - uses: actions/checkout@v4
-      - name: Setup
-        run: |
-          sudo apt update
-          sudo apt install -y python3-pip openjdk-11-jdk
-          pip3 install Cython buildozer
-      - name: Accept licenses
-        run: |
-          mkdir -p ~/.android/licenses
-          echo "8933bad161af4178b1185d1a37fbf41ea5269c55" > ~/.android/licenses/android-sdk-license
-      - name: Create files
-        run: |
-          echo "print('TEST')" > main.py
-          buildozer init
-      - name: Build
-        run: buildozer android debug
-      - uses: actions/upload-artifact@v4
-        with:
-          name: app
-          path: bin/
+    - uses: actions/checkout@v4
+    
+    - name: Clean and setup
+      run: |
+        # Force clean start
+        rm -f buildozer.spec
+        rm -rf .buildozer/ bin/ 2>/dev/null || true
+        
+        # Install tools
+        sudo apt update && sudo apt install -y python3-pip openjdk-11-jdk
+        pip3 install Cython buildozer
+        
+    - name: Setup licenses
+      run: |
+        mkdir -p ~/.android/licenses
+        echo "8933bad161af4178b1185d1a37fbf41ea5269c55" > ~/.android/licenses/android-sdk-license
+        
+    - name: Create app
+      run: |
+        echo "print('Android Scanner Ready')" > main.py
+        yes | buildozer init 2>/dev/null || true
+        
+    - name: Build
+      run: buildozer android debug
+        
+    - uses: actions/upload-artifact@v4
+      with:
+        name: final-apk
+        path: bin/
