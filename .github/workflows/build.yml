@@ -1,100 +1,25 @@
-name: Build Flutter App
+name: Build APK
 on: push
 jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Flutter
+      - name: Setup
         run: |
           sudo apt update
-          sudo snap install flutter --classic
-          flutter doctor
-      - name: Create Flutter app
+          pip3 install python-for-android
+      - name: Build
         run: |
-          flutter create subdomain_scanner
-          cd subdomain_scanner
-          
-          cat > lib/main.dart << 'EOF'
-import 'package:flutter/material.dart';
-
-void main() => runApp(SubdomainScannerApp());
-
-class SubdomainScannerApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Subdomain Scanner',
-      home: ScannerScreen(),
-    );
-  }
-}
-
-class ScannerScreen extends StatefulWidget {
-  @override
-  _ScannerScreenState createState() => _ScannerScreenState();
-}
-
-class _ScannerScreenState extends State<ScannerScreen> {
-  final TextEditingController _domainController = TextEditingController();
-  List<String> _results = [];
-
-  void _scanDomain() {
-    setState(() {
-      _results = [
-        'Scanning ${_domainController.text}...',
-        'www.${_domainController.text} → Resolving...',
-        'mail.${_domainController.text} → Resolving...'
-      ];
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Subdomain Scanner')),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: _domainController,
-              decoration: InputDecoration(
-                labelText: 'Enter domain (e.g. example.com)',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _scanDomain,
-              child: Text('Scan Domain', style: TextStyle(fontSize: 18)),
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(vertical: 15, horizontal: 30),
-              ),
-            ),
-            SizedBox(height: 20),
-            Expanded(
-              child: ListView.builder(
-                itemCount: _results.length,
-                itemBuilder: (context, index) => Card(
-                  child: ListTile(
-                    title: Text(_results[index]),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-EOF
-      - name: Build APK
-        run: |
-          cd subdomain_scanner
-          flutter build apk --release
+          p4a apk \
+          --private . \
+          --package=org.test.app \
+          --name App \
+          --requirements=python3 \
+          --arch=arm64-v8a \
+          --bootstrap=sdl2 \
+          --orientation=portrait
       - uses: actions/upload-artifact@v4
         with:
-          name: flutter-apk
-          path: subdomain_scanner/build/app/outputs/flutter-apk/
+          name: apk-result
+          path: "*.apk"
