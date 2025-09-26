@@ -1,4 +1,4 @@
-name: Build APK
+name: Quick APK Build
 
 on:
   push:
@@ -10,32 +10,37 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Install tools
+      - name: Force clean and setup
         run: |
+          # Remove all existing build files
+          find . -name "buildozer.spec" -delete
+          rm -rf .buildozer/ bin/ 2>/dev/null || true
+          
+          # Install tools
           sudo apt update
           sudo apt install -y python3-pip openjdk-11-jdk
           pip3 install Cython buildozer kivy
           
-      - name: Setup licenses
+      - name: Accept licenses
         run: |
           mkdir -p ~/.android/licenses
           echo "8933bad161af4178b1185d1a37fbf41ea5269c55" > ~/.android/licenses/android-sdk-license
           
-      - name: Create simple app
+      - name: Create minimal app
         run: |
           echo "from kivy.app import App" > main.py
           echo "from kivy.uix.label import Label" >> main.py
-          echo "class MyApp(App):" >> main.py
+          echo "class App(App):" >> main.py
           echo "    def build(self):" >> main.py
           echo "        return Label(text='Subdomain Scanner')" >> main.py
-          echo "MyApp().run()" >> main.py
+          echo "App().run()" >> main.py
           
-      - name: Build
+      - name: Build with force
         run: |
-          buildozer init
+          yes | buildozer init 2>/dev/null || true
           buildozer android debug
           
       - uses: actions/upload-artifact@v4
         with:
-          name: apk
+          name: android-apk
           path: bin/
