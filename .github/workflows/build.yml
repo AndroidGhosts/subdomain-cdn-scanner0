@@ -1,4 +1,4 @@
-name: Build Flutter App
+name: Build APK with P4A
 
 on:
   push:
@@ -7,88 +7,27 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Flutter
-        run: |
-          sudo apt update
-          sudo snap install flutter --classic
-          flutter doctor
-          
-      - name: Create Flutter app
-        run: |
-          flutter create subdomain_scanner
-          cd subdomain_scanner
-          
-          cat > lib/main.dart << 'EOF'
-import 'package:flutter/material.dart';
-
-void main() => runApp(SubdomainScannerApp());
-
-class SubdomainScannerApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Subdomain Scanner',
-      home: ScannerScreen(),
-    );
-  }
-}
-
-class ScannerScreen extends StatefulWidget {
-  @override
-  _ScannerScreenState createState() => _ScannerScreenState();
-}
-
-class _ScannerScreenState extends State<ScannerScreen> {
-  final TextEditingController _domainController = TextEditingController();
-  List<String> _results = [];
-
-  void _scanDomain() {
-    setState(() {
-      _results = ['Scanning ${_domainController.text}...', 'www.example.com → 192.168.1.1'];
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Subdomain Scanner')),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: _domainController,
-              decoration: InputDecoration(labelText: 'Enter domain'),
-            ),
-            ElevatedButton(
-              onPressed: _scanDomain,
-              child: Text('Scan Domain'),
-            ),
-            Expanded(
-              child: ListView.builder(
-                itemCount: _results.length,
-                itemBuilder: (context, index) => ListTile(
-                  title: Text(_results[index]),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+    - uses: actions/checkout@v4
+    
+    - name: Install Python-for-Android
+      run: |
+        sudo apt update
+        sudo apt install -y python3-pip openjdk-11-jdk zlib1g-dev
+        pip3 install python-for-android
+        
+    - name: Create Python script
+      run: |
+        cat > main.py << 'EOF'
+print("Subdomain Scanner Android App")
 EOF
-          
-      - name: Build APK
-        run: |
-          cd subdomain_scanner
-          flutter build apk --release
-          
-      - uses: actions/upload-artifact@v4
-        with:
-          name: flutter-apk
-          path: subdomain_scanner/build/app/outputs/flutter-apk/
+        
+    - name: Build APK
+      run: |
+        p4a apk --private . --package=org.ghost.scanner --name "SubdomainScanner" --version 1.0 --requirements=python3
+        
+    - uses: actions/upload-artifact@v4
+      with:
+        name: android-apk
+        path: *.apk
