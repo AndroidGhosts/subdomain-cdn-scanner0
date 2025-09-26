@@ -1,4 +1,4 @@
-name: Simple APK Build
+name: Build APK
 
 on:
   push:
@@ -11,27 +11,63 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Setup Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
-    
+    - name: Setup environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y python3-pip openjdk-17-jdk zlib1g-dev
+        
     - name: Install Buildozer
       run: pip3 install buildozer
         
-    - name: Create simple main.py
+    - name: Clean existing files and reinitialize
       run: |
-        echo "print('Subdomain Scanner Ready!')" > main.py
+        # Remove existing buildozer files if they exist
+        rm -f buildozer.spec
+        rm -rf .buildozer/
         
-    - name: Initialize Buildozer
+        # Create simple main.py
+        echo "print('Subdomain Scanner Starting...')" > main.py
+        
+        # Initialize fresh
+        buildozer init || echo "Initialization completed"
+        
+    - name: Update buildozer.spec with correct requirements
       run: |
-        buildozer init
-        echo "requirements = python3" >> buildozer.spec
+        # Create or update buildozer.spec
+        cat > buildozer.spec << 'EOF'
+[app]
+title = Subdomain Scanner
+package.name = subdomainscanner
+package.domain = org.ghost.scanner
+source.dir = .
+source.include_exts = py,png,jpg,kv,atlas,txt
+version = 1.0
+requirements = python3
+orientation = portrait
+
+[buildozer]
+log_level = 2
+
+[app:android]
+api = 33
+minapi = 21
+android.allow_backup = true
+EOF
+        
+    - name: Accept Android licenses
+      run: |
+        mkdir -p ~/.android/licenses
+        echo "8933bad161af4178b1185d1a37fbf41ea5269c55" > ~/.android/licenses/android-sdk-license
+        echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> ~/.android/licenses/android-sdk-license
         
     - name: Build APK
-      run: buildozer android debug || echo "Build process completed"
+      run: |
+        buildozer android clean
+        buildozer -v android debug
         
-    - uses: actions/upload-artifact@v4
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
       with:
-        name: apk-build
-        path: bin/
+        name: subdomain-scanner-apk
+        path: bin/*.apk
+        retention-days: 7
