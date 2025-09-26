@@ -1,15 +1,64 @@
-name: Build Flutter App
+name: Build APK
 on: push
 jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.16.0'
-      - run: flutter create app && cd app && flutter build apk --release
-      - uses: actions/upload-artifact@v4
+          
+      - name: Create and build Flutter app
+        run: |
+          flutter create subdomain_scanner
+          cd subdomain_scanner
+          
+          # استبدل محتوى التطبيق
+          cat > lib/main.dart << 'EOF'
+import 'package:flutter/material.dart';
+
+void main() => runApp(SubdomainScannerApp());
+
+class SubdomainScannerApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Subdomain Scanner',
+      home: Scaffold(
+        appBar: AppBar(title: Text('Subdomain Scanner')),
+        body: Center(
+          child: Text('🔍 Subdomain Scanner\nReady to use!', 
+                     style: TextStyle(fontSize: 20), textAlign: TextAlign.center),
+        ),
+      ),
+    );
+  }
+}
+EOF
+          
+          flutter build apk --release
+          
+      - name: Debug - List all files
+        run: |
+          echo "=== Current directory ==="
+          pwd
+          ls -la
+          
+          echo "=== Flutter app directory ==="
+          ls -la subdomain_scanner/
+          
+          echo "=== Build outputs ==="
+          find . -name "*.apk" -type f 2>/dev/null || echo "No APK files found"
+          find . -name "build" -type d 2>/dev/null | head -5
+          
+      - name: Upload APK if exists
+        uses: actions/upload-artifact@v4
         with:
-          name: app
-          path: app/build/app/outputs/flutter-apk/
+          name: flutter-apk
+          path: |
+            subdomain_scanner/build/app/outputs/flutter-apk/
+            *.apk
+          if-no-files-found: warn
