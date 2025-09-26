@@ -5,11 +5,19 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - name: Setup
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+      - name: Install with older NDK
         run: |
           sudo apt update
+          sudo apt install -y openjdk-11-jdk
           pip3 install python-for-android
-      - name: Build
+          
+          # Set older NDK version
+          export ANDROID_NDK_HOME=/usr/local/lib/android/sdk/ndk/21.4.7075529
+      - name: Build with specific NDK
         run: |
           p4a apk \
           --private . \
@@ -17,9 +25,9 @@ jobs:
           --name App \
           --requirements=python3 \
           --arch=arm64-v8a \
-          --bootstrap=sdl2 \
-          --orientation=portrait
+          --bootstrap=webview \
+          --ndk-version=21
       - uses: actions/upload-artifact@v4
         with:
-          name: apk-result
+          name: apk
           path: "*.apk"
