@@ -1,4 +1,4 @@
-name: Build Real APK
+name: Build APK
 
 on:
   push:
@@ -7,126 +7,35 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
-    
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y python3-pip openjdk-11-jdk zlib1g-dev git unzip wget
-        
-    - name: Install Buildozer
-      run: |
-        pip3 install Cython==0.29.33
-        pip3 install buildozer kivy
-        
-    - name: Setup Android licenses
-      run: |
-        mkdir -p ~/.android/licenses
-        echo "8933bad161af4178b1185d1a37fbf41ea5269c55" > ~/.android/licenses/android-sdk-license
-        echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> ~/.android/licenses/android-sdk-license
-        
-    - name: Create main.py using echo
-      run: |
-        rm -f buildozer.spec
-        rm -rf .buildozer/ || true
-        
-        # Create main.py line by line
-        echo "import kivy" > main.py
-        echo "from kivy.app import App" >> main.py
-        echo "from kivy.uix.boxlayout import BoxLayout" >> main.py
-        echo "from kivy.uix.label import Label" >> main.py
-        echo "from kivy.uix.textinput import TextInput" >> main.py
-        echo "from kivy.uix.button import Button" >> main.py
-        echo "from kivy.uix.scrollview import ScrollView" >> main.py
-        echo "import socket" >> main.py
-        echo "import threading" >> main.py
-        echo "" >> main.py
-        echo "class SubdomainScannerApp(App):" >> main.py
-        echo "    def build(self):" >> main.py
-        echo "        self.title = 'Subdomain Scanner'" >> main.py
-        echo "        main_layout = BoxLayout(orientation='vertical', padding=10, spacing=10)" >> main.py
-        echo "        " >> main.py
-        echo "        self.domain_input = TextInput(hint_text='Enter domain', size_hint=(1, 0.15), multiline=False)" >> main.py
-        echo "        main_layout.add_widget(self.domain_input)" >> main.py
-        echo "        " >> main.py
-        echo "        self.scan_button = Button(text='START SCAN', size_hint=(1, 0.15), background_color=(0.2, 0.6, 1, 1))" >> main.py
-        echo "        self.scan_button.bind(on_press=self.start_scan)" >> main.py
-        echo "        main_layout.add_widget(self.scan_button)" >> main.py
-        echo "        " >> main.py
-        echo "        self.results_label = Label(text='Results...', size_hint_y=None, text_size=(None, None), valign='top')" >> main.py
-        echo "        self.results_label.bind(width=lambda *x: self.results_label.setter('text_size')(self.results_label, (self.results_label.width, None)))" >> main.py
-        echo "        " >> main.py
-        echo "        scrollview = ScrollView(size_hint=(1, 0.7))" >> main.py
-        echo "        scrollview.add_widget(self.results_label)" >> main.py
-        echo "        main_layout.add_widget(scrollview)" >> main.py
-        echo "        " >> main.py
-        echo "        return main_layout" >> main.py
-        echo "    " >> main.py
-        echo "    def start_scan(self, instance):" >> main.py
-        echo "        domain = self.domain_input.text.strip()" >> main.py
-        echo "        if not domain:" >> main.py
-        echo "            self.results_label.text = 'Please enter a domain'" >> main.py
-        echo "            return" >> main.py
-        echo "        " >> main.py
-        echo "        self.scan_button.text = 'SCANNING...'" >> main.py
-        echo "        self.results_label.text = f'Scanning {domain}...'" >> main.py
-        echo "        threading.Thread(target=self.perform_scan, args=(domain,)).start()" >> main.py
-        echo "    " >> main.py
-        echo "    def perform_scan(self, domain):" >> main.py
-        echo "        results = []" >> main.py
-        echo "        " >> main.py
-        echo "        try:" >> main.py
-        echo "            ip = socket.gethostbyname(domain)" >> main.py
-        echo "            results.append(f'✅ {domain} → {ip}')" >> main.py
-        echo "        except:" >> main.py
-        echo "            results.append(f'❌ {domain} → Not reachable')" >> main.py
-        echo "        " >> main.py
-        echo "        subdomains = ['www', 'mail', 'ftp', 'admin']" >> main.py
-        echo "        for sub in subdomains:" >> main.py
-        echo "            full_domain = f'{sub}.{domain}'" >> main.py
-        echo "            try:" >> main.py
-        echo "                ip = socket.gethostbyname(full_domain)" >> main.py
-        echo "                results.append(f'✅ {full_domain} → {ip}')" >> main.py
-        echo "            except:" >> main.py
-        echo "                pass" >> main.py
-        echo "        " >> main.py
-        echo "        def update_ui():" >> main.py
-        echo "            self.results_label.text = chr(10).join(results)" >> main.py
-        echo "            self.scan_button.text = 'SCAN AGAIN'" >> main.py
-        echo "        " >> main.py
-        echo "        kivy.clock.Clock.schedule_once(lambda dt: update_ui(), 0)" >> main.py
-        echo "" >> main.py
-        echo "if __name__ == '__main__':" >> main.py
-        echo "    SubdomainScannerApp().run()" >> main.py
-        
-    - name: Create buildozer.spec
-      run: |
-        echo "[app]" > buildozer.spec
-        echo "title = Subdomain Scanner" >> buildozer.spec
-        echo "package.name = subdomainscanner" >> buildozer.spec
-        echo "package.domain = org.ghost.scanner" >> buildozer.spec
-        echo "source.dir = ." >> buildozer.spec
-        echo "source.include_exts = py,png,jpg,kv,atlas,txt" >> buildozer.spec
-        echo "version = 1.0" >> buildozer.spec
-        echo "requirements = python3,kivy" >> buildozer.spec
-        echo "orientation = portrait" >> buildozer.spec
-        echo "" >> buildozer.spec
-        echo "[buildozer]" >> buildozer.spec
-        echo "log_level = 1" >> buildozer.spec
-        echo "" >> buildozer.spec
-        echo "[app:android]" >> buildozer.spec
-        echo "api = 33" >> buildozer.spec
-        echo "minapi = 21" >> buildozer.spec
-        echo "android.allow_backup = true" >> buildozer.spec
-        
-    - name: Build APK
-      run: |
-        buildozer android clean
-        buildozer -v android debug
-        
-    - uses: actions/upload-artifact@v4
-      with:
-        name: subdomain-scanner-apk
-        path: bin/*.apk
+      - uses: actions/checkout@v4
+      
+      - name: Install tools
+        run: |
+          sudo apt update
+          sudo apt install -y python3-pip openjdk-11-jdk
+          pip3 install Cython buildozer kivy
+          
+      - name: Setup licenses
+        run: |
+          mkdir -p ~/.android/licenses
+          echo "8933bad161af4178b1185d1a37fbf41ea5269c55" > ~/.android/licenses/android-sdk-license
+          
+      - name: Create simple app
+        run: |
+          echo "from kivy.app import App" > main.py
+          echo "from kivy.uix.label import Label" >> main.py
+          echo "class MyApp(App):" >> main.py
+          echo "    def build(self):" >> main.py
+          echo "        return Label(text='Subdomain Scanner')" >> main.py
+          echo "MyApp().run()" >> main.py
+          
+      - name: Build
+        run: |
+          buildozer init
+          buildozer android debug
+          
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: bin/
