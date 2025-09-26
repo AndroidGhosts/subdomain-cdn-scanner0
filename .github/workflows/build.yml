@@ -179,9 +179,6 @@ api = 33
 minapi = 21
 android.allow_backup = True
 android.accept_sdk_license = True
-
-[buildozer]
-log_level = 2
 EOF
         
     - name: Build the APK
