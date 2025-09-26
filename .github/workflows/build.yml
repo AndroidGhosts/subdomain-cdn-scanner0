@@ -1,22 +1,32 @@
-name: Simple APK
-on: push
+name: Simple APK Build
+
+on:
+  push:
+    branches: [ main ]
+
 jobs:
   build:
     runs-on: ubuntu-22.04
+    
     steps:
-      - uses: actions/checkout@v4
-      - name: Clean and setup
-        run: |
-          rm -f buildozer.spec
-          rm -rf .buildozer/
-          pip3 install buildozer
-      - name: Create files
-        run: |
-          echo "print('Hello Android')" > main.py
-          buildozer init
-      - name: Build
-        run: buildozer android debug
-      - uses: actions/upload-artifact@v4
-        with:
-          name: apk-file
-          path: bin/
+    - uses: actions/checkout@v4
+    
+    - name: Install everything needed
+      run: |
+        sudo apt update
+        sudo apt install -y python3-pip openjdk-17-jdk zlib1g-dev git
+        pip3 install Cython buildozer
+        
+    - name: Create simple app
+      run: |
+        echo "print('Subdomain Scanner Android App')" > main.py
+        buildozer init || true
+        
+    - name: Build APK
+      run: |
+        buildozer android debug
+        
+    - uses: actions/upload-artifact@v4
+      with:
+        name: final-apk
+        path: bin/
