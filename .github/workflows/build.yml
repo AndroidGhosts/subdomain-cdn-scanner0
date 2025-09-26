@@ -1,4 +1,4 @@
-name: APK Build - Fixed Licenses
+name: Build Real APK
 
 on:
   push:
@@ -9,28 +9,194 @@ jobs:
     runs-on: ubuntu-22.04
     
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
     
-    - name: Setup
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y python3-pip openjdk-11-jdk
+        sudo apt-get install -y \
+          git zip unzip \
+          openjdk-17-jdk \
+          python3-pip \
+          autoconf libtool pkg-config \
+          zlib1g-dev \
+          libncurses5-dev \
+          cmake \
+          libffi-dev libssl-dev \
+          swig \
+          python3-venv
         
-    - name: Install Buildozer
-      run: pip3 install buildozer
-        
-    - name: Accept Android licenses automatically
+    - name: Install Buildozer and Kivy
       run: |
+        python3 -m pip install --upgrade pip wheel setuptools
+        pip3 install cython==0.29.33
+        pip3 install buildozer kivy
+        
+    - name: Accept Android licenses
+      run: |
+        mkdir -p ~/.android
+        touch ~/.android/repositories.cfg
         mkdir -p ~/.android/licenses
         echo "8933bad161af4178b1185d1a37fbf41ea5269c55" > ~/.android/licenses/android-sdk-license
         echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> ~/.android/licenses/android-sdk-license
+        echo "84831b9409646a918e30573bab4c9c91346d8abd" >> ~/.android/licenses/android-sdk-license
         
-    - name: Build
+    - name: Create proper main.py for Android
       run: |
-        buildozer init || true
-        buildozer android debug || echo "Build attempted"
+        cat > main.py << 'EOF'
+        # -*- coding: utf-8 -*-
+        from kivy.app import App
+        from kivy.uix.boxlayout import BoxLayout
+        from kivy.uix.label import Label
+        from kivy.uix.textinput import TextInput
+        from kivy.uix.button import Button
+        from kivy.uix.scrollview import ScrollView
+        import socket
+        import requests
+        from concurrent.futures import ThreadPoolExecutor
+        import dns.resolver
         
-    - uses: actions/upload-artifact@v4
+        class ScannerApp(App):
+            def build(self):
+                self.title = "Subdomain Scanner"
+                
+                # Main layout
+                main_layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
+                
+                # Input section
+                input_layout = BoxLayout(orientation='vertical', size_hint=(1, 0.2))
+                input_layout.add_widget(Label(text='Enter Domain:', size_hint=(1, 0.5)))
+                self.domain_input = TextInput(
+                    hint_text='example.com',
+                    multiline=False,
+                    size_hint=(1, 0.5)
+                )
+                input_layout.add_widget(self.domain_input)
+                main_layout.add_widget(input_layout)
+                
+                # Button section
+                self.scan_button = Button(
+                    text='START SCAN',
+                    size_hint=(1, 0.1),
+                    background_color=(0, 0.5, 1, 1)
+                )
+                self.scan_button.bind(on_press=self.start_scan)
+                main_layout.add_widget(self.scan_button)
+                
+                # Results section
+                results_layout = BoxLayout(orientation='vertical', size_hint=(1, 0.7))
+                results_layout.add_widget(Label(text='Scan Results:', size_hint=(1, 0.1)))
+                
+                self.results_label = Label(
+                    text='No scan results yet...',
+                    text_size=(None, None),
+                    size_hint_y=None,
+                    halign='left',
+                    valign='top'
+                )
+                self.results_label.bind(size=self.results_label.setter('text_size'))
+                
+                scrollview = ScrollView(size_hint=(1, 0.9))
+                scrollview.add_widget(self.results_label)
+                results_layout.add_widget(scrollview)
+                main_layout.add_widget(results_layout)
+                
+                return main_layout
+            
+            def start_scan(self, instance):
+                domain = self.domain_input.text.strip()
+                if not domain:
+                    self.results_label.text = "Please enter a domain"
+                    return
+                
+                self.scan_button.text = "SCANNING..."
+                self.scan_button.background_color = (1, 0.5, 0, 1)
+                self.results_label.text = f"Scanning {domain}...\n\n"
+                
+                # Simple scanning function
+                try:
+                    results = self.scan_domain(domain)
+                    self.results_label.text = f"Results for {domain}:\n\n{results}"
+                except Exception as e:
+                    self.results_label.text = f"Error: {str(e)}"
+                
+                self.scan_button.text = "SCAN AGAIN"
+                self.scan_button.background_color = (0, 0.5, 1, 1)
+            
+            def scan_domain(self, domain):
+                results = []
+                
+                # Check main domain
+                try:
+                    ip = socket.gethostbyname(domain)
+                    results.append(f"✓ {domain} -> {ip}")
+                except:
+                    results.append(f"✗ {domain} -> Not reachable")
+                
+                # Check common subdomains
+                subdomains = ['www', 'mail', 'ftp', 'admin', 'api', 'blog']
+                
+                for sub in subdomains:
+                    full_domain = f"{sub}.{domain}"
+                    try:
+                        ip = socket.gethostbyname(full_domain)
+                        results.append(f"✓ {full_domain} -> {ip}")
+                    except:
+                        pass
+                
+                return "\n".join(results)
+        
+        if __name__ == '__main__':
+            ScannerApp().run()
+        EOF
+        
+    - name: Create buildozer.spec
+      run: |
+        buildozer init
+        # Update buildozer.spec with correct settings
+        cat > buildozer.spec << 'EOF'
+[app]
+title = Subdomain Scanner
+package.name = subdomainscanner
+package.domain = org.ghost.scanner
+source.dir = .
+source.include_exts = py,png,jpg,kv,atlas,txt
+version = 1.0
+requirements = python3,kivy,requests,dnspython,colorama,urllib3
+orientation = portrait
+
+[buildozer]
+log_level = 2
+
+[app:android]
+api = 33
+minapi = 21
+android.allow_backup = True
+android.accept_sdk_license = True
+
+[buildozer]
+log_level = 2
+EOF
+        
+    - name: Build the APK
+      run: |
+        buildozer android clean
+        buildozer -v android debug
+      
+    - name: List generated files
+      run: |
+        find . -name "*.apk" -o -name "bin" | head -10
+        ls -la bin/ || echo "No bin directory"
+        
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
       with:
-        name: results
-        path: .
+        name: subdomain-scanner-apk
+        path: bin/*.apk
+        retention-days: 30
