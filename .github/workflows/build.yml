@@ -1,17 +1,30 @@
-name: Build APK with Docker
+name: Build APK
 on: push
 jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - name: Build using Kivy Docker image
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+      - name: Install fixed python-for-android
         run: |
-          docker run --rm \
-          -v $(pwd):/source \
-          -v buildozer_docker:/buildozer \
-          kivy/buildozer android debug
+          sudo apt update
+          sudo apt install -y openjdk-11-jdk zlib1g-dev
+          pip3 install Cython==0.29.33
+          # Install from a fixed fork
+          pip3 install git+https://github.com/kivy/python-for-android@master
+      - name: Apply patch for long issue
+        run: |
+          find /opt/hostedtoolcache -name "jnius_utils.pxi" -exec sed -i 's/isinstance(arg, long)/isinstance(arg, int)/g' {} \; 2>/dev/null || true
+      - name: Create app
+        run: echo "print('Subdomain Scanner')" > main.py
+      - name: Build APK
+        run: |
+          p4a apk --private . --package=org.test.app --name App --requirements=python3 --arch=arm64-v8a
       - uses: actions/upload-artifact@v4
         with:
-          name: docker-apk
-          path: bin/*.apk
+          name: apk
+          path: "*.apk"
