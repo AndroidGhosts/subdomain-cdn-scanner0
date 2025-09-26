@@ -1,49 +1,15 @@
-name: Build Web App
+name: Build Flutter App
 on: push
 jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - name: Create web application
-        run: |
-          cat > index.html << 'EOF'
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Subdomain Scanner</title>
-    <style>
-        body { font-family: Arial; max-width: 800px; margin: 0 auto; padding: 20px; }
-        input, button { padding: 10px; margin: 5px; width: 100%; }
-        #results { margin-top: 20px; }
-        .result { padding: 10px; border: 1px solid #ddd; margin: 5px 0; }
-    </style>
-</head>
-<body>
-    <h1>🔍 Subdomain Scanner</h1>
-    <input type="text" id="domain" placeholder="Enter domain (e.g. google.com)">
-    <button onclick="scan()">Scan Subdomains</button>
-    <div id="results"></div>
-    
-    <script>
-    function scan() {
-        const domain = document.getElementById('domain').value;
-        const results = document.getElementById('results');
-        results.innerHTML = `
-            <div class="result">Scanning ${domain}...</div>
-            <div class="result">www.${domain} → Checking...</div>
-            <div class="result">mail.${domain} → Checking...</div>
-            <div class="result">ftp.${domain} → Checking...</div>
-            <div class="result">admin.${domain} → Checking...</div>
-        `;
-    }
-    </script>
-</body>
-</html>
-EOF
-      - name: Package web app
-        run: zip webapp.zip index.html
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.0'
+      - run: flutter create app && cd app && flutter build apk --release
       - uses: actions/upload-artifact@v4
         with:
-          name: web-app
-          path: webapp.zip
+          name: app
+          path: app/build/app/outputs/flutter-apk/
