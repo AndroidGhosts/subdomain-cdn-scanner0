@@ -5,14 +5,19 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - name: One-line setup
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+      - name: Install
         run: |
-          sudo apt update && sudo apt install -y python3-pip openjdk-11-jdk zlib1g-dev build-essential
+          sudo apt update
+          sudo apt install -y openjdk-11-jdk
           pip3 install Cython python-for-android
       - name: Build
         run: |
           p4a apk --private . --package=org.test.app --name App --requirements=python3 --arch=arm64-v8a
       - uses: actions/upload-artifact@v4
         with:
-          name: apk-file
+          name: apk
           path: "*.apk"
