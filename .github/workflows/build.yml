@@ -5,15 +5,15 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - name: Install
+      - name: Setup
         run: |
           sudo apt update
           pip3 install python-for-android
-      - name: Create files
-        run: |
-          echo "print('Ready')" > main.py
+      - name: Create app
+        run: echo "print('Test')" > main.py
       - name: Build
         run: p4a apk --private . --package=org.test.app --name App --requirements=python3
       - uses: actions/upload-artifact@v4
         with:
-          name: apk-file
+          name: apk
+          path: "*.apk"
